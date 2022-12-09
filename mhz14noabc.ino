@@ -27,23 +27,23 @@ const int LCD_ROWS = 2;
 // other changes: dont delay for 3 minutes, send co2 value immediately, we can ignore those readings on the PC, its nice to see the warming up happen
 
 byte mhzResp[9];    // 9 bytes bytes response
-byte mhzCmdReadPPM[9] = {0xFF,0x01,0x86,0x00,0x00,0x00,0x00,0x00,0x79};
-byte mhzCmdCalibrateZero[9] = {0xFF,0x01,0x87,0x00,0x00,0x00,0x00,0x00,0x78};
-byte mhzCmdABCEnable[9] = {0xFF,0x01,0x79,0xA0,0x00,0x00,0x00,0x00,0xE6};
-byte mhzCmdABCDisable[9] = {0xFF,0x01,0x79,0x00,0x00,0x00,0x00,0x00,0x86};
-byte mhzCmdReset[9] = {0xFF,0x01,0x8d,0x00,0x00,0x00,0x00,0x00,0x72};
-byte mhzCmdMeasurementRange1000[9] = {0xFF,0x01,0x99,0x00,0x00,0x00,0x03,0xE8,0x7B};
-byte mhzCmdMeasurementRange2000[9] = {0xFF,0x01,0x99,0x00,0x00,0x00,0x07,0xD0,0x8F};
-byte mhzCmdMeasurementRange3000[9] = {0xFF,0x01,0x99,0x00,0x00,0x00,0x0B,0xB8,0xA3};
-byte mhzCmdMeasurementRange5000[9] = {0xFF,0x01,0x99,0x00,0x00,0x00,0x13,0x88,0xCB};
+byte mhzCmdReadPPM[9] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
+byte mhzCmdCalibrateZero[9] = {0xFF, 0x01, 0x87, 0x00, 0x00, 0x00, 0x00, 0x00, 0x78};
+byte mhzCmdABCEnable[9] = {0xFF, 0x01, 0x79, 0xA0, 0x00, 0x00, 0x00, 0x00, 0xE6};
+byte mhzCmdABCDisable[9] = {0xFF, 0x01, 0x79, 0x00, 0x00, 0x00, 0x00, 0x00, 0x86};
+byte mhzCmdReset[9] = {0xFF, 0x01, 0x8d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x72};
+byte mhzCmdMeasurementRange1000[9] = {0xFF, 0x01, 0x99, 0x00, 0x00, 0x00, 0x03, 0xE8, 0x7B};
+byte mhzCmdMeasurementRange2000[9] = {0xFF, 0x01, 0x99, 0x00, 0x00, 0x00, 0x07, 0xD0, 0x8F};
+byte mhzCmdMeasurementRange3000[9] = {0xFF, 0x01, 0x99, 0x00, 0x00, 0x00, 0x0B, 0xB8, 0xA3};
+byte mhzCmdMeasurementRange5000[9] = {0xFF, 0x01, 0x99, 0x00, 0x00, 0x00, 0x13, 0x88, 0xCB};
 
-int shifts=0,co2ppm;
+int shifts = 0, co2ppm;
 
 long previousMillis = 0;
 
 SoftwareSerial co2Serial(MH_Z19_RX, MH_Z19_TX); // define MH-Z19
 
-byte checksum(byte response[9]){
+byte checksum(byte response[9]) {
   byte crc = 0;
   for (int i = 1; i < 8; i++) {
     crc += response[i];
@@ -54,7 +54,7 @@ byte checksum(byte response[9]){
 
 
 void disableABC() {
- co2Serial.write(mhzCmdABCDisable, 9);
+  co2Serial.write(mhzCmdABCDisable, 9);
 }
 
 int readCO2() {
@@ -70,11 +70,11 @@ int readCO2() {
   memset(response, 0, 9);
   co2Serial.readBytes(response, 9);
 
-for (int i=0; i<9; i++) {
-  Serial.print(" 0x");
-  Serial.print(response[i], HEX);
-}
-Serial.println(" Response OK. Shifts="+String(shifts));
+  for (int i = 0; i < 9; i++) {
+    Serial.print(" 0x");
+    Serial.print(response[i], HEX);
+  }
+  Serial.println(" Response OK. Shifts=" + String(shifts));
 
 
   if (response[1] != 0x86)
@@ -99,11 +99,11 @@ void setup() {
   unsigned long previousMillis = millis();
   co2Serial.begin(9600); //Init sensor MH-Z19(14)
 
-  
+
   int status;
 
   status = lcd.begin(LCD_COLS, LCD_ROWS);
-  if(status) // non zero status means it was unsuccesful
+  if (status) // non zero status means it was unsuccesful
   {
     // hd44780 has a fatalError() routine that blinks an led if possible
     // begin() failed so blink error code using the onboard LED if possible
@@ -114,12 +114,12 @@ void setup() {
 
   // Print a message to the LCD
   //  setBacklight doesn't seem to work, either with the jumper in/out
-  lcd.backlight(); 
-  lcd.setBacklight(200);  
+  lcd.backlight();
+  lcd.setBacklight(200);
   lcd.print("MH-Z14 ABC disab");
 
 
-  
+
   delay(500);
   disableABC();
 }
@@ -133,43 +133,43 @@ void loop() {
   unsigned long currentMillis = millis(); // overflows after 50 days, but with abs we avoid overflow issues, we measure difference either way
   if (abs(currentMillis - previousMillis) > INTERVAL)
   {
-      previousMillis = currentMillis;
-      Serial.print("Requesting CO2 concentration...");
-      co2ppm=-999;
-      co2ppm = readCO2();
-      Serial.println("  PPM = " + String(co2ppm));
-  
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print(co2ppm);
-      lcd.setCursor(13, 0);
-      lcd.print("PPM");
+    previousMillis = currentMillis;
+    Serial.print("Requesting CO2 concentration...");
+    co2ppm = -999;
+    co2ppm = readCO2();
+    Serial.println("  PPM = " + String(co2ppm));
 
-      // Adjust high, low only if time > 3 minutes (180 000 ms)
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(co2ppm);
+    lcd.setCursor(13, 0);
+    lcd.print("PPM");
 
-      if(millis() > 180000){
-        hasWarmedUp = true;
+    // Adjust high, low only if time > 3 minutes (180 000 ms)
+
+    if (millis() > 180000) {
+      hasWarmedUp = true;
+    }
+
+    // TODO make this time real, first bugtest it
+    if (hasWarmedUp) {
+      if (co2ppm > highco2) {
+        highco2 = co2ppm;
       }
-      
-      // TODO make this time real, first bugtest it
-      if (hasWarmedUp){
-        if (co2ppm > highco2){
-          highco2 = co2ppm;
-          }  
-        if (co2ppm < lowco2 && co2ppm != 410 && co2ppm != -1) {
-          lowco2 = co2ppm;
-          }
+      if (co2ppm < lowco2 && co2ppm != 410 && co2ppm != -1) {
+        lowco2 = co2ppm;
       }
-  
-      // print high, low
-      lcd.setCursor(0, 1);
-      if (hasWarmedUp){
-        
+    }
+
+    // print high, low
+    lcd.setCursor(0, 1);
+    if (hasWarmedUp) {
+
       lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
-        }else
-      {
-        lcd.print("3 min warmup...");
-      }
-      
+    } else
+    {
+      lcd.print("3 min warmup...");
+    }
+
   }
 }
