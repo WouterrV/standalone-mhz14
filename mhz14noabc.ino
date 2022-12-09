@@ -116,7 +116,7 @@ void setup() {
   //  setBacklight doesn't seem to work, either with the jumper in/out
   lcd.backlight(); 
   lcd.setBacklight(200);  
-  lcd.print("Hello, World!");
+  lcd.print("MH-Z14 ABC disab");
 
 
   
@@ -124,20 +124,52 @@ void setup() {
   disableABC();
 }
 
+int lowco2 = 9999;
+int highco2 = 0;
+boolean hasWarmedUp = 0;
+
+
 void loop() {
-  unsigned long currentMillis = millis();
+  unsigned long currentMillis = millis(); // overflows after 50 days, but with abs we avoid overflow issues, we measure difference either way
   if (abs(currentMillis - previousMillis) > INTERVAL)
   {
-          previousMillis = currentMillis;
-          Serial.print("Requesting CO2 concentration...");
-          co2ppm=-999;
-          co2ppm = readCO2();
-          Serial.println("  PPM = " + String(co2ppm));
+      previousMillis = currentMillis;
+      Serial.print("Requesting CO2 concentration...");
+      co2ppm=-999;
+      co2ppm = readCO2();
+      Serial.println("  PPM = " + String(co2ppm));
+  
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(co2ppm);
+      lcd.setCursor(13, 0);
+      lcd.print("PPM");
 
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print(co2ppm);
-          lcd.setCursor(13, 0);
-          lcd.print("PPM");
+      // Adjust high, low only if time > 3 minutes (180 000 ms)
+
+      if(millis() > 180000){
+        hasWarmedUp = true;
+      }
+      
+      // TODO make this time real, first bugtest it
+      if (hasWarmedUp){
+        if (co2ppm > highco2){
+          highco2 = co2ppm;
+          }  
+        if (co2ppm < lowco2 && co2ppm != 410 && co2ppm != -1) {
+          lowco2 = co2ppm;
+          }
+      }
+  
+      // print high, low
+      lcd.setCursor(0, 1);
+      if (hasWarmedUp){
+        
+      lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
+        }else
+      {
+        lcd.print("3 min warmup...");
+      }
+      
   }
 }
