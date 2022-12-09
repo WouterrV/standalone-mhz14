@@ -47,6 +47,7 @@ byte mhzCmdMeasurementRange5000[9] = {0xFF, 0x01, 0x99, 0x00, 0x00, 0x00, 0x13, 
 int shifts = 0, co2ppm;
 
 long previousMillis = 0;
+long previous18minMillis = 0;
 
 SoftwareSerial co2Serial(MH_Z19_RX, MH_Z19_TX); // define MH-Z19
 
@@ -141,6 +142,12 @@ void loop() {
   if (abs(currentMillis - previousMillis) > INTERVAL)
   {
     previousMillis = currentMillis;
+
+    // Set warmed up status
+    if (currentMillis > 180000) {
+      hasWarmedUp = true;
+    }
+
     Serial.print("Requesting CO2 concentration...");
     co2ppm = -999;
     co2ppm = readCO2();
@@ -152,41 +159,39 @@ void loop() {
     lcd.setCursor(13, 0);
     lcd.print("PPM");
 
-    // circularBuffer maintenance
-    circularBuffer.push(co2ppm);
+    // circularBuffer maintenance every 18 mins
+    if (abs(currentMillis - previous18minMillis) > 1080000) {
+      previous18minMillis = currentMillis;
 
-    //    read from circularBuffer with []
-    // dump it to serial to see if it works
-    for (byte i = 0; i < circularBuffer.size(); i++) {
-      Serial.print(circularBuffer[i]);
-      Serial.print(" ");
+      circularBuffer.push(co2ppm);
+
+      // read from circularBuffer with []
+      // dump it to serial to see if it works
+      for (byte i = 0; i < circularBuffer.size(); i++) {
+        Serial.print(circularBuffer[i]);
+        Serial.print(" ");
+      }
     }
-  
 
-
-  if (millis() > 180000) {
-    hasWarmedUp = true;
-  }
-
-  // TODO make this time real, first bugtest it
-  if (hasWarmedUp) {
-    if (co2ppm > highco2) {
-      highco2 = co2ppm;
+    // Update high/low if sensor is warmed up
+    if (hasWarmedUp) {
+      if (co2ppm > highco2) {
+        highco2 = co2ppm;
+      }
+      if (co2ppm < lowco2 && co2ppm != 410 && co2ppm != -1) {
+        lowco2 = co2ppm;
+      }
     }
-    if (co2ppm < lowco2 && co2ppm != 410 && co2ppm != -1) {
-      lowco2 = co2ppm;
+
+    // LCD print high, low
+    lcd.setCursor(0, 1);
+    if (hasWarmedUp) {
+
+      lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
+    } else
+    {
+      lcd.print("3 min warmup...");
     }
+
   }
-
-  // print high, low
-  lcd.setCursor(0, 1);
-  if (hasWarmedUp) {
-
-    lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
-  } else
-  {
-    lcd.print("3 min warmup...");
-  }
-
-}
 }
