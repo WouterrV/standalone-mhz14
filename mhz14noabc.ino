@@ -2,6 +2,12 @@
 #include <SPI.h>
 #include <Wire.h>
 
+// Todo:
+// make a reading every 20 minutes
+// put it in a circular buffer
+// display the lo/high from this buffer on screen
+// make a graph of the last 24h values
+
 
 // Initialize display
 #include <LiquidCrystal.h>
