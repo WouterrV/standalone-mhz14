@@ -2,6 +2,13 @@
 #include <SPI.h>
 #include <Wire.h>
 
+// https://github.com/rlogiacco/CircularBuffer
+#include <CircularBuffer.h>
+CircularBuffer<int, 80> circularBuffer;
+
+// we want 24h on the display, 16 chars * 5 values = 80, 24/80=0.3 hours every measurement, 18 minutes
+
+
 #include <hd44780.h>                       // main hd44780 header
 #include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
 
@@ -145,31 +152,41 @@ void loop() {
     lcd.setCursor(13, 0);
     lcd.print("PPM");
 
-    // Adjust high, low only if time > 3 minutes (180 000 ms)
+    // circularBuffer maintenance
+    circularBuffer.push(co2ppm);
 
-    if (millis() > 180000) {
-      hasWarmedUp = true;
+    //    read from circularBuffer with []
+    // dump it to serial to see if it works
+    for (byte i = 0; i < circularBuffer.size(); i++) {
+      Serial.print(circularBuffer[i]);
+      Serial.print(" ");
     }
+  
 
-    // TODO make this time real, first bugtest it
-    if (hasWarmedUp) {
-      if (co2ppm > highco2) {
-        highco2 = co2ppm;
-      }
-      if (co2ppm < lowco2 && co2ppm != 410 && co2ppm != -1) {
-        lowco2 = co2ppm;
-      }
-    }
 
-    // print high, low
-    lcd.setCursor(0, 1);
-    if (hasWarmedUp) {
-
-      lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
-    } else
-    {
-      lcd.print("3 min warmup...");
-    }
-
+  if (millis() > 180000) {
+    hasWarmedUp = true;
   }
+
+  // TODO make this time real, first bugtest it
+  if (hasWarmedUp) {
+    if (co2ppm > highco2) {
+      highco2 = co2ppm;
+    }
+    if (co2ppm < lowco2 && co2ppm != 410 && co2ppm != -1) {
+      lowco2 = co2ppm;
+    }
+  }
+
+  // print high, low
+  lcd.setCursor(0, 1);
+  if (hasWarmedUp) {
+
+    lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
+  } else
+  {
+    lcd.print("3 min warmup...");
+  }
+
+}
 }
