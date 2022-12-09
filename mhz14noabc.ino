@@ -2,22 +2,23 @@
 #include <SPI.h>
 #include <Wire.h>
 
+#include <hd44780.h>                       // main hd44780 header
+#include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
+
+hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
+// LCD geometry
+const int LCD_COLS = 16;
+const int LCD_ROWS = 2;
+
 // Todo:
 // make a reading every 20 minutes
 // put it in a circular buffer
 // display the lo/high from this buffer on screen
 // make a graph of the last 24h values
 
-
-// Initialize display
-#include <LiquidCrystal.h>
-const int rs = 12, en = 11, d4 = 4, d5 = 5, d6 = 6, d7 = 7;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-
-
 #define INTERVAL 5000
-#define MH_Z19_RX A0 //RX
-#define MH_Z19_TX A1 //TX
+#define MH_Z19_RX A0 // RX
+#define MH_Z19_TX A1 // TX
 
 // Adapted from https://www.letscontrolit.com/forum/viewtopic.php?t=1785&start=40
 // but I dont believe in single point calibration (two point is much more legit) so I disabled Automatic Baseline Calibration (ABC) as much as possible
@@ -97,10 +98,27 @@ void setup() {
   Serial.begin(115200);
   unsigned long previousMillis = millis();
   co2Serial.begin(9600); //Init sensor MH-Z19(14)
+
   
-  // set the cursor to column 0, line 0, counting begins at zero
-  lcd.setCursor(0, 1);
-  lcd.print("Starting up");
+  int status;
+
+  status = lcd.begin(LCD_COLS, LCD_ROWS);
+  if(status) // non zero status means it was unsuccesful
+  {
+    // hd44780 has a fatalError() routine that blinks an led if possible
+    // begin() failed so blink error code using the onboard LED if possible
+    hd44780::fatalError(status); // does not return
+  }
+
+  // initalization was successful, the backlight should be on now
+
+  // Print a message to the LCD
+  //  setBacklight doesn't seem to work, either with the jumper in/out
+  lcd.backlight(); 
+  lcd.setBacklight(200);  
+  lcd.print("Hello, World!");
+
+
   
   delay(500);
   disableABC();
