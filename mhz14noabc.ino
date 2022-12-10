@@ -8,11 +8,12 @@ CircularBuffer<int, 80> circularBuffer;
 
 // we want 24h on the display, 16 chars * 5 values = 80, 24/80=0.3 hours every measurement, 18 minutes
 
+// Initialize display
+#include <LiquidCrystal.h>
+const int rs = 12, en = 11, d4 = 4, d5 = 5, d6 = 6, d7 = 7;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-#include <hd44780.h>                       // main hd44780 header
-#include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
 
-hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
 // LCD geometry
 const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
@@ -106,27 +107,9 @@ void setup() {
   Serial.begin(115200);
   unsigned long previousMillis = millis();
   co2Serial.begin(9600); //Init sensor MH-Z19(14)
+  lcd.begin(16,2);
 
-
-  int status;
-
-  status = lcd.begin(LCD_COLS, LCD_ROWS);
-  if (status) // non zero status means it was unsuccesful
-  {
-    // hd44780 has a fatalError() routine that blinks an led if possible
-    // begin() failed so blink error code using the onboard LED if possible
-    hd44780::fatalError(status); // does not return
-  }
-
-  // initalization was successful, the backlight should be on now
-
-  // Print a message to the LCD
-  //  setBacklight doesn't seem to work, either with the jumper in/out
-  lcd.backlight();
-  lcd.setBacklight(200);
   lcd.print("MH-Z14 ABC disab");
-
-
 
   delay(500);
   disableABC();
@@ -184,12 +167,14 @@ void loop() {
     }
 
     // LCD print high, low
-    lcd.setCursor(0, 1);
     if (hasWarmedUp) {
 
+      lcd.setCursor(0,1);
       lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
     } else
     {
+
+      lcd.setCursor(0,1);
       lcd.print("3 min warmup...");
     }
 
