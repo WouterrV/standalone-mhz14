@@ -11,17 +11,15 @@ CircularBuffer<int, 80> circularBuffer;
 
 #include <hd44780.h>                       // main hd44780 header
 #include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
+#include <LCDGraph.h> // see https://github.com/jgOhYeah/LCDGraph/blob/main/examples/I2CDisplay/I2CDisplay.ino
 
 hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
+
+LCDGraph<uint8_t, hd44780_I2Cexp> graph(8, 1, 0); // 8 character wide graph, 1 char high, starting at custom char # 0 in the lcd ram.
+
 // LCD geometry
 const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
-
-// Todo:
-// make a reading every 20 minutes
-// put it in a circular buffer
-// display the lo/high from this buffer on screen
-// make a graph of the last 24h values
 
 #define INTERVAL 5000
 #define MH_Z19_RX A0 // RX
@@ -107,7 +105,6 @@ void setup() {
   unsigned long previousMillis = millis();
   co2Serial.begin(9600); //Init sensor MH-Z19(14)
 
-
   int status;
 
   status = lcd.begin(LCD_COLS, LCD_ROWS);
@@ -126,6 +123,16 @@ void setup() {
   lcd.setBacklight(200);
   lcd.print("MH-Z14 ABC disab");
 
+  // start graph
+  graph.begin(&lcd);
+
+  // Draw the graph:
+  graph.yMin = -800;
+  graph.yMax = 800;
+  graph.filled = true;
+  graph.setRegisters();
+  graph.display(0, 1);
+
 
 
   delay(500);
@@ -135,10 +142,12 @@ void setup() {
 int lowco2 = 9999;
 int highco2 = 0;
 boolean hasWarmedUp = 0;
-
+boolean displayGraph = 0;
 
 void loop() {
   unsigned long currentMillis = millis(); // overflows after 50 days, but with abs we avoid overflow issues, we measure difference either way
+
+  // Only do something every interval
   if (abs(currentMillis - previousMillis) > INTERVAL)
   {
     previousMillis = currentMillis;
@@ -183,15 +192,35 @@ void loop() {
       }
     }
 
-    // LCD print high, low
-    lcd.setCursor(0, 1);
-    if (hasWarmedUp) {
+    // Print alternately the graph or current, min, max
 
-      lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
-    } else
-    {
-      lcd.print("3 min warmup...");
+    if (displayGraph) {
+      displayGraph = false;
+
+      //    Override the display with the graph
+      static uint8_t counter = 0;
+      float result = 800 * sin(counter);
+      graph.add(result);
+      graph.setRegisters();
+      counter += 2;
+      graph.display(0, 1);
+
+
+    } else {
+      displayGraph = true;
+      // LCD print high, low
+      lcd.setCursor(0, 1);
+      if (hasWarmedUp) {
+
+        lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
+      } else
+      {
+        lcd.print("3 min warmup...");
+      }
     }
+
+
+
 
   }
 }
