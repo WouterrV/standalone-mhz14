@@ -14,6 +14,15 @@ const int rs = 12, en = 11, d4 = 4, d5 = 5, d6 = 6, d7 = 7;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 
+#include <LCDGraph.h> // see https://github.com/jgOhYeah/LCDGraph/blob/main/examples/I2CDisplay/I2CDisplay.ino
+
+
+// specifying 2 char high doesnt seem to work, is still 1
+// width >8 also doesnt work, nothing gets displayed
+// limit here is the 8 custom chars. And when we change a char then the past drawings of that charget updated
+LCDGraph<uint8_t, LiquidCrystal> graph1(8, 1, 0); // 8 character wide graph, 1 char high, starting at custom char # 0 in the lcd ram.
+
+
 // LCD geometry
 const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
@@ -109,6 +118,25 @@ void setup() {
   co2Serial.begin(9600); //Init sensor MH-Z19(14)
   lcd.begin(16,2);
 
+  int status;
+
+  lcd.begin(LCD_COLS, LCD_ROWS);
+
+  //  This gives a fatalError
+  //  status = lcd2.begin(LCD_COLS, LCD_ROWS);
+  if (status) // non zero status means it was unsuccesful
+  {
+
+    Serial.println("fatal 44780 error");
+    // hd44780 has a fatalError() routine that blinks an led if possible
+    // begin() failed so blink error code using the onboard LED if possible
+    //    hd44780::fatalError(status); // does not return
+  }
+
+  // initalization was successful, the backlight should be on now
+
+  // Print a message to the LCD
+  //  setBacklight doesn't seem to work, either with the jumper in/out
   lcd.print("MH-Z14 ABC disab");
 
   delay(500);
