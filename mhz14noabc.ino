@@ -4,10 +4,10 @@
 
 // https://github.com/rlogiacco/CircularBuffer
 #include <CircularBuffer.h>
-CircularBuffer<int, 80> circularBuffer;
+CircularBuffer<int, 40> circularBuffer;
 
 // we want 24h on the display, 16 chars * 5 values = 80, 24/80=0.3 hours every measurement, 18 minutes
-
+// eh we only have 8 chars. 8*5=40, 24*60/40=36 min per measurement
 
 #include <hd44780.h>                       // main hd44780 header
 #include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
@@ -15,7 +15,11 @@ CircularBuffer<int, 80> circularBuffer;
 
 hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
 
-LCDGraph<uint8_t, hd44780_I2Cexp> graph(8, 1, 0); // 8 character wide graph, 1 char high, starting at custom char # 0 in the lcd ram.
+// specifying 2 char high doesnt seem to work, is still 1
+// width >8 also doesnt work, nothing gets displayed
+// limit here is the 8 custom chars. And when we change a char then the past drawings of that charget updated
+LCDGraph<uint8_t, hd44780_I2Cexp> graph1(8, 1, 0); // 8 character wide graph, 1 char high, starting at custom char # 0 in the lcd ram.
+
 
 // LCD geometry
 const int LCD_COLS = 16;
@@ -45,7 +49,7 @@ byte mhzCmdMeasurementRange5000[9] = {0xFF, 0x01, 0x99, 0x00, 0x00, 0x00, 0x13, 
 int shifts = 0, co2ppm;
 
 long previousMillis = 0;
-long previous18minMillis = 0;
+long previous18minMillis = 9990000; // so we start immediately with filling our circular buffer
 
 SoftwareSerial co2Serial(MH_Z19_RX, MH_Z19_TX); // define MH-Z19
 
@@ -108,11 +112,16 @@ void setup() {
   int status;
 
   status = lcd.begin(LCD_COLS, LCD_ROWS);
+
+  //  This gives a fatalError
+  //  status = lcd2.begin(LCD_COLS, LCD_ROWS);
   if (status) // non zero status means it was unsuccesful
   {
+
+    Serial.println("fatal 44780 error");
     // hd44780 has a fatalError() routine that blinks an led if possible
     // begin() failed so blink error code using the onboard LED if possible
-    hd44780::fatalError(status); // does not return
+    //    hd44780::fatalError(status); // does not return
   }
 
   // initalization was successful, the backlight should be on now
@@ -124,16 +133,13 @@ void setup() {
   lcd.print("MH-Z14 ABC disab");
 
   // start graph
-  graph.begin(&lcd);
+  graph1.begin(&lcd);
 
   // Draw the graph:
-  graph.yMin = -800;
-  graph.yMax = 800;
-  graph.filled = true;
-  graph.setRegisters();
-  graph.display(0, 1);
-
-
+  graph1.yMin = -800;
+  graph1.yMax = 800;
+  graph1.filled = true;
+  graph1.setRegisters();
 
   delay(500);
   disableABC();
@@ -162,17 +168,12 @@ void loop() {
     co2ppm = readCO2();
     Serial.println("  PPM = " + String(co2ppm));
 
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(co2ppm);
-    lcd.setCursor(13, 0);
-    lcd.print("PPM");
-
-    // circularBuffer maintenance every 18 mins
-    if (abs(currentMillis - previous18minMillis) > 1080000) {
+    // circularBuffer maintenance every 36 mins
+    if (abs(currentMillis - previous18minMillis) > 2160000) {
       previous18minMillis = currentMillis;
 
       circularBuffer.push(co2ppm);
+      graph1.add(co2ppm);
 
       // read from circularBuffer with []
       // dump it to serial to see if it works
@@ -192,33 +193,25 @@ void loop() {
       }
     }
 
-    // Print alternately the graph or current, min, max
+    // Print both graph and text
+    lcd.clear();
 
-    if (displayGraph) {
-      displayGraph = false;
+    // Graph
+    graph1.autoRescale(true); // rescale based on values in the circular buffer it seems
+    graph1.setRegisters();
+    graph1.display(0, 0);
 
-      //    Override the display with the graph
-      static uint8_t counter = 0;
-      float result = 800 * sin(counter);
-      graph.add(result);
-      graph.setRegisters();
-      counter += 2;
-      graph.display(0, 1);
-
-
-    } else {
-      displayGraph = true;
-      // LCD print high, low
-      lcd.setCursor(0, 1);
-      if (hasWarmedUp) {
-
-        lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
-      } else
-      {
-        lcd.print("3 min warmup...");
-      }
+    // Text
+    lcd.setCursor(12, 0);
+    lcd.print(co2ppm);
+    // LCD print high, low
+    lcd.setCursor(0, 1);
+    if (hasWarmedUp) {
+      lcd.print("hilo: " + String(highco2) + " " + String(lowco2));
+    } else
+    {
+      lcd.print("3 min warmup...");
     }
-
 
 
 
